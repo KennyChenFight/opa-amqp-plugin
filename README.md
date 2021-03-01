@@ -15,7 +15,7 @@ plugins:
     queueName: test-queue
 ```
 When running opa-amqp-plugin, we need provide above config file.<br>
-This config should provide **amqpUrl**, **exchangeName**, **routerKey**, **queueName**, so it can start amqp consumer successfully.
+This config should provide **amqpUrl**, **exchangeName**, **routerKey**, **queueName**, so it can start amqp consumer successfully.<br>
 3. run opa-amqp-plugin: `./build/bin/opa-amqp run --server --config-file config.yaml`
 4. build amqp-publisher: `make build-publisher`
 5. run amqp-publisher: `./build/bin/amqp-publisher` <br>
@@ -52,7 +52,7 @@ this input.json file content is:<br>
     }
   }
 }
-```   
+```
 or 
 ```json
 {
