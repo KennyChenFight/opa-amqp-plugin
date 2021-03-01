@@ -1,0 +1,9 @@
+{
+  "input": {
+    "method": "GET",
+    "path": ["salary", "bob"],
+    "subject": {
+      "user": "bob"
+    }
+  }
+}

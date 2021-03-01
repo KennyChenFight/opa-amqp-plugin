@@ -1,0 +1,8 @@
+{
+  "input": {
+    "subject": {
+      "user": "bob",
+      "groups": ["sales", "admin"]
+    }
+  }
+}

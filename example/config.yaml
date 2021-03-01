@@ -1,0 +1,6 @@
+plugins:
+  amqp_policy_consumer:
+    amqpUrl: amqp://localhost:5672
+    exchangeName: test-exchange
+    routerKey: test-key
+    queueName: test-queue
