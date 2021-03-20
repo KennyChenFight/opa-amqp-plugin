@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+
+	"github.com/KennyChenFight/golib/amqplib"
 
 	"github.com/assembla/cony"
 	"github.com/open-policy-agent/opa/plugins"
@@ -17,6 +20,7 @@ const PluginName = "amqp_policy_consumer"
 type Config struct {
 	AMQPUrl      string `json:"amqpUrl"`
 	ExchangeName string `json:"exchangeName"`
+	ExchangeType string `json:"exchangeType"`
 	RouterKey    string `json:"routerKey"`
 	QueueName    string `json:"queueName"`
 }
@@ -43,50 +47,31 @@ func (p *PolicyConsumer) Reconfigure(ctx context.Context, config interface{}) {
 }
 
 func (p *PolicyConsumer) listen() {
-	cli := cony.NewClient(
-		cony.URL(p.Config.AMQPUrl),
-		cony.Backoff(cony.DefaultBackoff),
-	)
-	p.Client = cli
-
-	que := &cony.Queue{
-		AutoDelete: true,
-		Name:       p.Config.QueueName,
+	connectionConfig := &amqplib.AMQPConnectionConfig{
+		URL:          p.Config.AMQPUrl,
+		ErrorHandler: nil,
 	}
-	exc := cony.Exchange{
-		Name:       p.Config.ExchangeName,
-		Kind:       "fanout",
-		AutoDelete: true,
+	queueConfig := &amqplib.AMQPQueueConfig{
+		ExchangeName:        p.Config.ExchangeName,
+		ExchangeType:        amqplib.ExchangeType(p.Config.ExchangeType),
+		AutoDeclareExchange: false,
+		QueueName:           p.Config.QueueName,
+		RoutingKey:          p.Config.RouterKey,
+		AutoDelete:          false,
 	}
-	bnd := cony.Binding{
-		Queue:    que,
-		Exchange: exc,
-		Key:      p.Config.RouterKey,
+	client := amqplib.NewAMQPClient(connectionConfig)
+	defer client.Close()
+	consumer, err := client.NewConsumer(queueConfig)
+	if err != nil {
+		panic(err)
 	}
-	p.Client.Declare([]cony.Declaration{
-		cony.DeclareQueue(que),
-		cony.DeclareExchange(exc),
-		cony.DeclareBinding(bnd),
-	})
-
-	// Declare and register a consumer
-	cns := cony.NewConsumer(
-		que,
-	)
-	p.Client.Consume(cns)
-	for cli.Loop() {
-		select {
-		case msg := <-cns.Deliveries():
-			fmt.Printf("Received body: %v\n", msg.Body)
-			if err := p.update(msg.Body); err != nil {
-				fmt.Printf("update err: %v\n", err)
-			}
-			msg.Ack(false)
-		case err := <-cns.Errors():
-			fmt.Printf("Consumer error: %v\n", err)
-		case err := <-p.Client.Errors():
-			fmt.Printf("Client error: %v\n", err)
+	defer consumer.Close()
+	for delivery := range consumer.Consume() {
+		log.Printf("Received body: %v\n", delivery.Body)
+		if err := p.update(delivery.Body); err != nil {
+			log.Printf("update err: %v\n", err)
 		}
+		delivery.Ack(false)
 	}
 }
 
